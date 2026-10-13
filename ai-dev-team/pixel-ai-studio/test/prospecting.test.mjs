@@ -43,6 +43,14 @@ test('provedor Overpass usa geocodificação e consulta reais por POST, com dado
   assert.equal(calls.length,2);assert.equal(calls[0].options.headers['user-agent'],provider.userAgent);assert.equal(calls[1].options.method,'POST');assert.equal(result.results[0].name,'Barbearia Real');assert.equal(result.metadata.provider,'overpass');assert.equal(result.metadata.license,'ODbL');assert.ok(phases.some(p=>p.includes('Overpass')));
 });
 
+test('usa Geoapify no servidor sem expor a chave nos metadados e aceita varios nichos',async()=>{
+  const calls=[],fixture={results:[{lat:-5.18,lon:-40.67,bbox:[-40.70,-5.20,-40.65,-5.15],formatted:'Crateus, Ceara, Brasil',name:'Crateus',result_type:'city',place_id:'fixture-place',datasource:{raw:{osm_type:'r',osm_id:9201}}}]};
+  const fetchImpl=async(url,options)=>{calls.push({url:new URL(String(url)),options});if(String(url).includes('/geocode/search'))return new Response(JSON.stringify(fixture),{status:200,headers:{'content-type':'application/json'}});return new Response(JSON.stringify({elements:[]}),{status:200,headers:{'content-type':'application/json'}})};
+  const provider=new OverpassProvider({fetchImpl,geoapifyUrl:'https://geoapify.test/v1/geocode/search',geoapifyApiKey:'fixture-secret',overpassUrl:'https://overpass.test/interpreter'});
+  const parsed=parseProspectingIntent({categories:['Restaurantes','Barbearias'],region:'Crateus'});assert.equal(parsed.category_spec.tags.length,2);
+  const result=await provider.search(parsed);assert.equal(provider.geocoderName,'Geoapify');assert.equal(calls[0].url.searchParams.get('text'),'Crateus');assert.equal(calls[0].url.searchParams.get('apiKey'),'fixture-secret');assert.equal(result.metadata.geocoder_name,'Geoapify');assert.equal(JSON.stringify(result.metadata).includes('fixture-secret'),false);assert.match(new URLSearchParams(calls[1].options.body).get('data'),/amenity.*restaurant/);assert.match(new URLSearchParams(calls[1].options.body).get('data'),/shop.*hairdresser/);
+});
+
 test('relata indisponibilidade e permite cancelar requisição Overpass',async()=>{
   const failing=new OverpassProvider({fetchImpl:async url=>String(url).includes('/search')?new Response(JSON.stringify(geocode),{status:200}):new Response('busy',{status:429}),overpassUrl:'https://overpass.test/interpreter',nominatimUrl:'https://nominatim.test/search'});
   await assert.rejects(()=>failing.search(parseProspectingIntent({query:'Restaurantes em Crateús'})),/sobrecarregado/);

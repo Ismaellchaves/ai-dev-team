@@ -25,3 +25,27 @@
 /* Leaflet/OpenStreetMap e movimento real do agente Maps até a estação */
 #prospectingMap.leaflet-container{font:12px var(--sans);background:#e8e4dc}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#171a22;color:#ececf1}.leaflet-popup-content a{color:#a9c8ff}.leaflet-control-attribution{font-size:10px!important}.prospecting-stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;padding:7px 0}.prospecting-stats>span{padding:5px 8px;border:1px solid #333743;border-radius:4px;background:#11141a;color:#aeb6c4;font-size:9px}.prospecting-stats b{color:#d8c6ff}.prospecting-stats small{flex-basis:100%;color:#a4a8b2;font-size:9px}.prospect-result:focus-visible,.history-search:focus-visible,.map-station-monitor:focus-visible{outline:2px solid #bba4ff;outline-offset:2px}.prospect-result-actions span{color:#c8beaa;font-size:9px}.map-station{position:absolute;right:5%;bottom:12%;display:grid;z-index:4;width:122px;padding:4px;border:2px solid #534638;border-radius:4px;background:#39373b;box-shadow:4px 5px #282329}.map-station-monitor{display:grid;gap:5px;width:100%;padding:3px;border:0;background:transparent;text-align:left;cursor:pointer}.map-agent-host{position:absolute;left:0;right:0;bottom:0;height:68px;display:grid;place-items:center;pointer-events:none}.map-agent-host .desk{pointer-events:auto;width:86px;height:68px;z-index:6}.map-agent-host .desk-agent{top:0!important}.map-agent-host .desk-body{display:none}.map-agent-host .desk-label{top:33px!important;left:-6px!important;right:-6px!important}.map-agent-host .desk-state{bottom:0!important;left:0!important;right:0!important}.office-unit .map-station{right:4%;bottom:11%}.office-unit .map-agent-host .desk{height:65px}.office-unit .map-agent-host .desk .pixel-person{width:27px;height:27px}.office-unit .map-agent-host .desk-label strong{font-size:7px}
 @media(max-width:700px){.office-unit .map-station{right:2%;bottom:9%;transform:scale(.9);transform-origin:bottom right}.prospecting-stats{gap:4px}.prospecting-stats>span{padding:4px 6px;font-size:8px}}
+
+/* Busca simplificada com selecao direta de nicho, regiao e alcance */
+.search-form-title{margin:0;color:#f0edf6;font-size:15px}
+.category-picker,.radius-picker{min-width:0;margin:0;padding:9px;border:1px solid #30323b;border-radius:7px}
+.category-picker legend,.radius-picker legend{padding:0 4px;color:#bfc2cc;font-size:10px}
+.quick-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.quick-category-grid label{position:relative;display:block;min-width:0;cursor:pointer}
+.prospecting-form .quick-category-grid input{position:absolute;width:1px;height:1px;opacity:0}
+.quick-category-grid span{display:flex;align-items:center;min-height:34px;padding:6px 8px;border:1px solid #363945;border-radius:6px;background:#101219;color:#c9cbd3;font-size:9px;line-height:1.3}
+.quick-category-grid input:checked+span{border-color:#9c7be0;background:#302746;color:#f3eaff;box-shadow:inset 0 0 0 1px #755ca8}
+.quick-category-grid input:focus-visible+span{outline:2px solid #c5aaff;outline-offset:2px}
+.custom-category-label{margin-top:9px}
+.prospecting-form select{box-sizing:border-box;width:100%;min-width:0;padding:9px 10px;border:1px solid #363945;border-radius:5px;background:#0c0e13;color:#ececf1;font:inherit}
+.radius-options{display:flex;flex-wrap:wrap;gap:5px}
+.radius-options label{position:relative;display:block;cursor:pointer}
+.prospecting-form .radius-options input,.prospecting-form .site-filter-option input{position:absolute;width:1px;height:1px;opacity:0}
+.radius-options span{display:block;padding:7px 9px;border:1px solid #363945;border-radius:999px;background:#101219;color:#c8cbd3;font-size:9px}
+.radius-options input:checked+span{border-color:#9c7be0;background:#302746;color:#f3eaff}
+.radius-options input:focus-visible+span,.site-filter-option input:focus-visible+span{outline:2px solid #c5aaff;outline-offset:2px}
+.prospecting-form .site-filter-option{display:flex;align-items:flex-start;gap:8px;padding:9px;border:1px solid #30323b;border-radius:6px;color:#c4c6cf;line-height:1.4;cursor:pointer}
+.prospecting-form .site-filter-option span{font-size:9px}
+.prospecting-form .site-filter-option input:checked+span:before{content:'\2713 ';color:#a88cea}
+#prospectingFormError:empty{display:none}
+@media(max-width:620px){.quick-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.category-picker,.radius-picker{padding:8px}}

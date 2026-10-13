@@ -28,8 +28,8 @@ O Vercel hospeda a interface e encaminha as chamadas para uma instalação persi
    - `PIXEL_BACKEND_URL`: endereço HTTPS público do backend, sem caminho final, por exemplo `https://pixel-api.seudominio.com`.
    - `PIXEL_BACKEND_TOKEN`: o mesmo token `PIXEL_API_TOKEN` configurado no servidor persistente.
    - `PIXEL_SITE_USER`: usuário para abrir o painel (opcional; padrão `pixel`).
-   - `PIXEL_SITE_PASSWORD`: senha longa e exclusiva para proteger o painel. Sem ela o middleware bloqueia a publicação.
-4. Publique novamente após configurar as variáveis. O painel solicitará usuário e senha HTTP Basic ao abrir.
+   - `PIXEL_SITE_PASSWORD`: senha longa e exclusiva para proteger o painel. Sem ela o middleware bloqueia a publicação com HTTP 503. O `.env` local não é enviado à Vercel pelo GitHub.
+4. Salve as variáveis e faça um novo Deploy (Deployments → menu do deploy → Redeploy, ou envie um novo commit). O painel solicitará usuário e senha HTTP Basic ao abrir. Se o erro persistir, confira se a variável foi criada no projeto e ambiente corretos e se o redeploy terminou após a alteração.
 
 Gere um token compartilhado com pelo menos 32 caracteres em um terminal seguro, por exemplo:
 
@@ -73,9 +73,9 @@ Resultados vêm de Overpass, são deduplicados pelo tipo e ID do objeto OSM, apr
 
 O backend salva parâmetros, estado, metadados de fonte e os resultados OSM retornados em SQLite; mantém também a tabela antiga de Place IDs Google para preservar o histórico anterior. O CSV inclui o ID OSM e aviso de atribuição/licença. Dados OpenStreetMap são disponibilizados sob ODbL; se distribuir/publicar a base derivada, observe as obrigações de atribuição e share-alike. A tela mostra atribuição clicável para os tiles e dados. Consulte a [licença e atribuição OSM](https://www.openstreetmap.org/copyright).
 
-Sem chaves ou cobrança de Google, a aplicação usa três serviços configuráveis: Leaflet 1.9.4, Nominatim para resolver a localização e Overpass para consultar categorias OSM. O servidor limita pesquisas iniciadas pelo painel a três por minuto, limita Nominatim globalmente a no máximo uma solicitação por segundo, envia um User-Agent identificável, usa consultas Overpass POST com limites de timeout/memória e máximo de segmentos/resultados, não solicita tiles em segundo plano e respeita o carregamento normal e cache do navegador. Serviços públicos são best-effort e podem recusar buscas demoradas ou grandes. A busca é manual; não há autocomplete, geocodificação em lote, contatos comerciais nem garantia de cobertura completa. As políticas podem mudar; confira a [política Nominatim](https://operations.osmfoundation.org/policies/nominatim/), as [orientações de carga Overpass](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html) e a [política dos tiles OSM](https://operations.osmfoundation.org/policies/tiles/).
+Sem chaves ou cobrança de Google, a aplicação usa três serviços configuráveis: Leaflet 1.9.4, Geoapify para localizar regioes quando PIXEL_GEOAPIFY_API_KEY estiver configurada (Nominatim permanece como alternativa) e Overpass para consultar categorias OSM. O servidor le a chave somente do ambiente e nunca a envia ao navegador; configure a mesma variavel no backend persistente remoto. A documentacao do Geoapify informa cota e restricoes por plano.
 
-O provedor é separado da interface: `PIXEL_PROSPECTING_PROVIDER`, `PIXEL_OVERPASS_URL`, `PIXEL_NOMINATIM_URL` e `PIXEL_OSM_TILE_URL` permitem trocar a implantação sem reconstruir o escritório. Defina `PIXEL_OVERPASS_CELL_KM` e `PIXEL_OVERPASS_MAX_SEGMENTS` para ajustar a divisão geográfica dentro dos limites razoáveis do serviço público. Depois de mudar o `.env`, reinicie o backend persistente.
+O provedor é separado da interface: `PIXEL_PROSPECTING_PROVIDER`, `PIXEL_OVERPASS_URL`, `PIXEL_NOMINATIM_URL`, `PIXEL_GEOAPIFY_URL`, `PIXEL_GEOAPIFY_API_KEY` permitem trocar a implantação sem reconstruir o escritório. Defina `PIXEL_OVERPASS_CELL_KM` e `PIXEL_OVERPASS_MAX_SEGMENTS` para ajustar a divisão geográfica dentro dos limites razoáveis do serviço público. Depois de mudar o `.env`, reinicie o backend persistente.
 
 Em **Projetos**, abra uma entrega finalizada para ver a prévia do `index.html`, abrir o site em outra aba, conferir os arquivos criados e baixar o projeto em `.zip`. A prévia embutida roda em um quadro isolado do restante do painel.
 

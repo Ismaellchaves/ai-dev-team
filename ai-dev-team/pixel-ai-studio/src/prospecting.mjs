@@ -42,7 +42,9 @@ export function categoryFor(value){
 
 export function parseProspectingIntent(input={}){
   const query=String(input.query??'').trim().slice(0,1000),folded=fold(query);
-  let category=String(input.category??'').trim().slice(0,100),region=String(input.region??'').trim().slice(0,180),radius=Number(input.radius_km)||null;
+  const selectedCategories=Array.isArray(input.categories)?input.categories.map(value=>String(value??'').trim()).filter(Boolean).slice(0,12):[];
+  let category=String(input.category??'').trim().slice(0,300),region=String(input.region??'').trim().slice(0,180),radius=Number(input.radius_km)||null;
+  if(selectedCategories.length)category=selectedCategories.join(', ');
   const radiusMatch=query.match(/raio\s*(?:de)?\s*(\d{1,3})\s*km\s*(?:de|a partir de)\s*(.+?)(?:[.!?]|$)/iu);
   if(!category){
     const known=categoryRules.find(rule=>rule.terms.some(term=>folded.includes(term)));
@@ -62,8 +64,8 @@ export function parseProspectingIntent(input={}){
   const maxResults=limit(input.max_results||maxMatch?.[1],1,500,100);
   const maxSegments=limit(input.max_segments,1,64,24);
   const missing=[];if(!category)missing.push('category');if(!region)missing.push('region');
-  const categorySpec=categoryFor(category);
-  const siteOnly=/(?:com|que tenham|possuem)\s+(?:site|website)/i.test(query);return{query,category,region,radius_km:radius&&radius>0?Math.min(200,Math.round(radius)):null,max_results:maxResults,max_segments:maxSegments,category_spec:categorySpec,site_only:siteOnly,missing,unsupported_category:Boolean(category&&!categorySpec)};
+  const categories=selectedCategories.length?selectedCategories:(category?[category]:[]),categorySpecs=categories.map(categoryFor),categorySpec=categorySpecs.length&&categorySpecs.every(Boolean)?{label:categories.join(', '),tags:[...new Map(categorySpecs.flatMap(spec=>spec.tags).map(tag=>[tag.join('='),tag])).values()]}:null;
+  const siteOnly=Boolean(input.site_only)||/(?:com|que tenham|possuem)\s+(?:site|website)/i.test(query);return{query,category,region,radius_km:radius&&radius>0?Math.min(200,Math.round(radius)):null,max_results:maxResults,max_segments:maxSegments,category_spec:categorySpec,site_only:siteOnly,missing,unsupported_category:Boolean(categories.length&&!categorySpec)};
 }
 
 export function deduplicateOsmElements(elements=[]){
@@ -102,50 +104,71 @@ export function normalizeOsmElement(element){
   return{id:`osm:${element.type}:${element.id}`,osm_type:element.type,osm_id:String(element.id),name:cleanTag(tags.name||tags.brand||'Sem nome cadastrado no OpenStreetMap'),category:cleanTag(tags.shop||tags.amenity||tags.office||tags.craft||tags.leisure||tags.tourism||tags.healthcare||''),address,latitude:Number.isFinite(latitude)?latitude:null,longitude:Number.isFinite(longitude)?longitude:null,phone:cleanTag(tags.phone||tags['contact:phone']||''),website:cleanTag(website),opening_hours:cleanTag(tags.opening_hours||''),osm_url:`https://www.openstreetmap.org/${element.type}/${element.id}`,tags};
 }
 
-let lastNominatimRequest=0;
+let lastGeocodeRequest=0;
 const geocodeCache=new Map();
-async function geocodeRegion(region,{signal,fetchImpl,nominatimUrl,userAgent}){
-  const key=fold(region);if(geocodeCache.has(key))return geocodeCache.get(key);
-  const wait=Math.max(0,1000-(Date.now()-lastNominatimRequest));if(wait)await new Promise((resolve,reject)=>{const timer=setTimeout(resolve,wait);signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('Aborted','AbortError'))},{once:true})});
-  lastNominatimRequest=Date.now();const url=new URL(nominatimUrl);url.searchParams.set('q',region);url.searchParams.set('format','jsonv2');url.searchParams.set('limit','5');url.searchParams.set('addressdetails','1');
-  const response=await fetchImpl(url,{signal,headers:{'accept':'application/json','user-agent':userAgent}});
-  if(!response.ok){if(response.status===429||response.status===503)throw new Error('O serviço público de localização está sobrecarregado. Aguarde alguns minutos e tente novamente.');throw new Error(`A consulta de localização falhou (HTTP ${response.status}).`)}
-  const matches=await response.json();if(!Array.isArray(matches)||!matches.length)throw new Error('Localização não encontrada no OpenStreetMap. Tente incluir cidade e estado/país.');
-  const chosen=matches[0],bbox=chosen.boundingbox?.map(Number);if(!bbox||bbox.length!==4)throw new Error('A localização encontrada não possui limites geográficos utilizáveis.');
-  const parsed={lat:Number(chosen.lat),lon:Number(chosen.lon),bbox,osm_type:chosen.osm_type,osm_id:Number(chosen.osm_id),display_name:chosen.display_name,osm_name:chosen.name,category:chosen.category,type:chosen.type};
-  if(!Number.isFinite(parsed.lat)||!Number.isFinite(parsed.lon)||!Number.isSafeInteger(parsed.osm_id))throw new Error('A localização retornou dados geográficos inválidos.');
+const osmType=value=>({r:'relation',w:'way',n:'node',relation:'relation',way:'way',node:'node'})[String(value||'').toLowerCase()]||null;
+function geoapifyBounds(value){
+  if(Array.isArray(value)&&value.length===4){const [west,south,east,north]=value.map(Number);return [south,north,west,east].every(Number.isFinite)?[south,north,west,east]:null}
+  if(value&&typeof value==='object'){const west=Number(value.lon1??value.west),south=Number(value.lat1??value.south),east=Number(value.lon2??value.east),north=Number(value.lat2??value.north);return [south,north,west,east].every(Number.isFinite)?[south,north,west,east]:null}
+  return null;
+}
+async function geocodeRegion(region,{signal,fetchImpl,nominatimUrl,geoapifyUrl,geoapifyApiKey,userAgent}){
+  const geocoder=geoapifyApiKey?'geoapify':'nominatim',key=geocoder+':'+fold(region);if(geocodeCache.has(key))return geocodeCache.get(key);
+  const wait=Math.max(0,1000-(Date.now()-lastGeocodeRequest));if(wait)await new Promise((resolve,reject)=>{const timer=setTimeout(resolve,wait);signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('Aborted','AbortError'))},{once:true})});
+  lastGeocodeRequest=Date.now();let url,payload;
+  if(geoapifyApiKey){
+    url=new URL(geoapifyUrl);url.searchParams.set('text',region);url.searchParams.set('format','json');url.searchParams.set('lang','pt');url.searchParams.set('limit','5');url.searchParams.set('apiKey',geoapifyApiKey);
+    const response=await fetchImpl(url,{signal,headers:{accept:'application/json'}});
+    if(!response.ok){if(response.status===401||response.status===403)throw new Error('A chave Geoapify recusou a chave ou ela nao tem acesso a Geocoding API. Confira PIXEL_GEOAPIFY_API_KEY.');if(response.status===429)throw new Error('O limite de consultas Geoapify foi atingido. Aguarde ou confira a cota da sua conta.');throw new Error('Falha na consulta Geoapify de localizacao (HTTP '+response.status+').')}
+    try{payload=await response.json()}catch{throw new Error('Geoapify retornou uma resposta inv?lida.')}
+    const chosen=(payload.results||payload.features||[])[0];if(!chosen)throw new Error('Localiza??o n?o encontrada. Tente escolher uma op??o ou informar cidade e estado.');
+    const raw=chosen.datasource?.raw||chosen.properties?.datasource?.raw||{},properties=chosen.properties||chosen,bbox=geoapifyBounds(properties.bbox||chosen.bbox),type=osmType(raw.osm_type);
+    const parsed={lat:Number(properties.lat??chosen.lat),lon:Number(properties.lon??chosen.lon),bbox,osm_type:type||'node',osm_id:Number(raw.osm_id)||null,display_name:properties.formatted||properties.address_line1||properties.name||region,osm_name:properties.name||properties.city||properties.state||region,category:properties.category,type:properties.result_type||properties.type,place_id:properties.place_id,geocoder};
+    if(!Number.isFinite(parsed.lat)||!Number.isFinite(parsed.lon))throw new Error('Geoapify nao retornou coordenadas validas para essa localizacao.');
+    geocodeCache.set(key,parsed);return parsed;
+  }
+  url=new URL(nominatimUrl);url.searchParams.set('q',region);url.searchParams.set('format','jsonv2');url.searchParams.set('limit','5');url.searchParams.set('addressdetails','1');
+  const response=await fetchImpl(url,{signal,headers:{accept:'application/json','user-agent':userAgent}});
+  if(!response.ok){if(response.status===429||response.status===503)throw new Error('O servi?o p?blico de localiza??o est? sobrecarregado. Aguarde alguns minutos e tente novamente.');throw new Error('A consulta de localiza??o falhou (HTTP '+response.status+').')}
+  try{payload=await response.json()}catch{throw new Error('O geocodificador retornou uma resposta inv?lida.')}
+  if(!Array.isArray(payload)||!payload.length)throw new Error('Localiza??o n?o encontrada. Tente informar cidade e estado.');
+  const chosen=payload[0],bbox=chosen.boundingbox?.map(Number);if(!bbox||bbox.length!==4)throw new Error('A localiza??o encontrada n?o possui limites geogr?ficos utiliz?veis.');
+  const parsed={lat:Number(chosen.lat),lon:Number(chosen.lon),bbox,osm_type:osmType(chosen.osm_type),osm_id:Number(chosen.osm_id)||null,display_name:chosen.display_name,osm_name:chosen.name,category:chosen.category,type:chosen.type,geocoder};
+  if(!Number.isFinite(parsed.lat)||!Number.isFinite(parsed.lon))throw new Error('A localiza??o retornou coordenadas inv?lidas.');
   geocodeCache.set(key,parsed);return parsed;
 }
 
 export class OverpassProvider{
-  constructor(config={}){this.id='overpass';this.name='OpenStreetMap / Overpass';this.overpassUrl=config.overpassUrl||'https://overpass-api.de/api/interpreter';this.nominatimUrl=config.nominatimUrl||'https://nominatim.openstreetmap.org/search';this.tileUrl=config.tileUrl||'https://tile.openstreetmap.org/{z}/{x}/{y}.png';this.userAgent=config.userAgent||'PIXEL-AI-STUDIO/0.2 (user-initiated OSM prospecting)';this.cellKm=Number(config.cellKm)||180;this.maxSegments=Math.min(64,Math.max(1,Number(config.maxSegments)||24));this.fetchImpl=config.fetchImpl||fetch;}
+  constructor(config={}){this.id='overpass';this.name='OpenStreetMap / Overpass';this.overpassUrl=config.overpassUrl||'https://overpass-api.de/api/interpreter';this.nominatimUrl=config.nominatimUrl||'https://nominatim.openstreetmap.org/search';this.geoapifyUrl=config.geoapifyUrl||'https://api.geoapify.com/v1/geocode/search';this.geoapifyApiKey=config.geoapifyApiKey||'';this.userAgent=config.userAgent||'PIXEL-AI-STUDIO/0.2 (user-initiated OSM prospecting)';this.geocoderName=this.geoapifyApiKey?'Geoapify':'Nominatim';this.geocoderReady=Boolean(this.geoapifyApiKey);this.tileUrl=config.tileUrl||'https://tile.openstreetmap.org/{z}/{x}/{y}.png';this.cellKm=Number(config.cellKm)||180;this.maxSegments=Math.min(64,Math.max(1,Number(config.maxSegments)||24));this.fetchImpl=config.fetchImpl||fetch;}
   async search(search,{signal,onProgress=()=>{}}={}){
-    onProgress('Localizando a região no OpenStreetMap');
-    let location=await geocodeRegion(search.region,{signal,fetchImpl:this.fetchImpl,nominatimUrl:this.nominatimUrl,userAgent:this.userAgent});
-    if(!search.radius_km&&location.osm_type==='node'){
-      onProgress('Localizando o limite administrativo da cidade');
+    onProgress('Localizando a regiao com '+this.geocoderName);
+    let location=await geocodeRegion(search.region,{signal,fetchImpl:this.fetchImpl,nominatimUrl:this.nominatimUrl,geoapifyUrl:this.geoapifyUrl,geoapifyApiKey:this.geoapifyApiKey,userAgent:configUserAgent(this)});
+    if(!search.radius_km&&(location.osm_type==='node'||!location.osm_id||!location.bbox)){
+      onProgress('Localizando o limite administrativo da regi?o');
       const safeName=String(location.osm_name||search.region).replaceAll('\\','\\\\').replaceAll('"','\\"');
-      const boundaryQuery=`[out:json][timeout:10];rel(around:5000,${location.lat},${location.lon})["boundary"="administrative"]["name"="${safeName}"];out center tags 10;`;
-      const boundaryResponse=await this.fetchImpl(this.overpassUrl,{method:'POST',signal,headers:{'content-type':'application/x-www-form-urlencoded;charset=UTF-8','accept':'application/json','user-agent':this.userAgent},body:new URLSearchParams({data:boundaryQuery})});
-      if(!boundaryResponse.ok)throw new Error(boundaryResponse.status===429||boundaryResponse.status===504?'Overpass está sobrecarregado ao localizar o limite da cidade. Tente novamente mais tarde.':`A consulta do limite geográfico falhou (HTTP ${boundaryResponse.status}).`);
+      const boundaryQuery=location.osm_type==='relation'&&location.osm_id?`[out:json][timeout:15];rel(${location.osm_id});out geom;`:`[out:json][timeout:15];rel(around:5000,${location.lat},${location.lon})["boundary"="administrative"]["name"="${safeName}"];out geom;`;
+      const boundaryResponse=await this.fetchImpl(this.overpassUrl,{method:'POST',signal,headers:{'content-type':'application/x-www-form-urlencoded;charset=UTF-8','accept':'application/json','user-agent':'PIXEL-AI-STUDIO/0.2 (user-initiated OSM prospecting)'},body:new URLSearchParams({data:boundaryQuery})});
+      if(!boundaryResponse.ok)throw new Error(boundaryResponse.status===429||boundaryResponse.status===503||boundaryResponse.status===504?'Overpass est? sobrecarregado ao localizar o limite. Informe um raio ou tente novamente mais tarde.':'A consulta do limite geogr?fico falhou (HTTP '+boundaryResponse.status+').');
       const boundaryData=await boundaryResponse.json(),relation=(boundaryData.elements||[]).filter(item=>item.type==='relation').sort((a,b)=>Number(a.tags?.admin_level||99)-Number(b.tags?.admin_level||99))[0];
-      if(!relation)throw new Error('O OpenStreetMap não forneceu um limite administrativo para essa cidade. Informe um raio ou uma região menor que tenha limite mapeado.');
-      location={...location,osm_type:'relation',osm_id:Number(relation.id),display_name:relation.tags?.name||location.display_name};
+      if(!relation)throw new Error('O OpenStreetMap nao forneceu o limite dessa regiao. Informe um raio para continuar.');
+      const points=(relation.members||[]).flatMap(member=>member.geometry||[]),latitudes=points.map(point=>Number(point.lat)).filter(Number.isFinite),longitudes=points.map(point=>Number(point.lon)).filter(Number.isFinite),bounds=location.bbox||([latitudes.length&&longitudes.length?[Math.min(...latitudes),Math.max(...latitudes),Math.min(...longitudes),Math.max(...longitudes)]:null][0]);
+      location={...location,osm_type:'relation',osm_id:Number(relation.id),bbox:bounds,display_name:relation.tags?.name||location.display_name};
     }
+    if(!search.radius_km&&(!location.bbox||!['relation','way'].includes(location.osm_type)||!location.osm_id))throw new Error('Geoapify encontrou o local, mas o limite OSM nao esta disponivel. Escolha um raio ou outra regiao.');
     const bounds=search.radius_km?null:location.bbox,center={lat:location.lat,lon:location.lon};
     const cells=search.radius_km?[]:splitBoundingBox(bounds,Math.min(this.maxSegments,search.max_segments),this.cellKm);
     const query=buildOverpassQuery({location,cells,radiusKm:search.radius_km,center,tags:search.category_spec.tags,maxResults:search.max_results});
-    onProgress(`Consultando Overpass em ${search.radius_km?'um raio de '+search.radius_km+' km':cells.length+' área(s) delimitada(s)'}`);
-    const response=await this.fetchImpl(this.overpassUrl,{method:'POST',signal,headers:{'content-type':'application/x-www-form-urlencoded;charset=UTF-8','accept':'application/json','user-agent':this.userAgent},body:new URLSearchParams({data:query})});
-    if(!response.ok){if(response.status===429||response.status===504||response.status===503)throw new Error('Overpass está sobrecarregado ou atingiu o limite de recursos. Aguarde e tente novamente com uma região menor ou menos segmentos.');throw new Error(`Overpass respondeu com erro HTTP ${response.status}.`)}
-    let payload;try{payload=await response.json()}catch{throw new Error('Overpass retornou uma resposta inválida. Tente novamente mais tarde.')}
-    if(payload.remark)throw new Error(`Overpass não concluiu a consulta: ${String(payload.remark).slice(0,240)}. Reduza a região ou tente novamente mais tarde.`);
+    onProgress('Consultando Overpass em '+(search.radius_km?'um raio de '+search.radius_km+' km':cells.length+' ?rea(s) delimitada(s)'));
+    const response=await this.fetchImpl(this.overpassUrl,{method:'POST',signal,headers:{'content-type':'application/x-www-form-urlencoded;charset=UTF-8','accept':'application/json','user-agent':'PIXEL-AI-STUDIO/0.2 (user-initiated OSM prospecting)'},body:new URLSearchParams({data:query})});
+    if(!response.ok){if(response.status===429||response.status===504||response.status===503)throw new Error('Overpass est? sobrecarregado ou atingiu o limite de recursos. Aguarde e tente uma regi?o menor.');throw new Error('Overpass respondeu com erro HTTP '+response.status+'.')}
+    let payload;try{payload=await response.json()}catch{throw new Error('Overpass retornou uma resposta inv?lida. Tente novamente mais tarde.')}
+    if(payload.remark)throw new Error('Overpass n?o concluiu a consulta: '+String(payload.remark).slice(0,240)+'. Reduza a regi?o ou tente mais tarde.');
     onProgress('Deduplicando identificadores OSM');
     const unique=deduplicateOsmElements(payload.elements||[]),websiteFiltered=search.site_only?unique.filter(element=>element.tags?.website||element.tags?.['contact:website']):unique,elements=websiteFiltered.slice(0,search.max_results),results=elements.map(normalizeOsmElement);
-    const metadata={provider:this.id,provider_name:this.name,source_url:this.overpassUrl,geocoder_url:this.nominatimUrl,license:'ODbL',attribution:'© OpenStreetMap contributors',location_name:location.display_name,location_type:location.type,location_osm_type:location.osm_type,location_osm_id:location.osm_id,center,bounds,radius_km:search.radius_km,segments:cells.length,requested_max:search.max_results,truncated:(payload.elements||[]).length>results.length||results.length>=search.max_results,returned_raw:(payload.elements||[]).length,unique_count:results.length,analyzed_count:results.length,qualified_count:0,qualification_note:'A busca localizou registros OSM. Qualificação comercial ainda não executada; ausência de site não indica que a empresa não tenha site.',site_filter:search.site_only?'Somente registros que têm tag de site no OSM':'Nenhum'};
-    onProgress(`Consulta concluída: ${results.length} registros OSM únicos recebidos`);
-    return{results,metadata};
+    const metadata={provider:this.id,provider_name:this.name,geocoder:location.geocoder,geocoder_name:this.geocoderName,source_url:this.overpassUrl,geocoder_url:this.geoapifyApiKey?this.geoapifyUrl:this.nominatimUrl,license:'ODbL',attribution:'\u00a9 OpenStreetMap contributors',location_name:location.display_name,location_type:location.type,location_osm_type:location.osm_type,location_osm_id:location.osm_id,center,bounds,radius_km:search.radius_km,segments:cells.length,requested_max:search.max_results,truncated:(payload.elements||[]).length>results.length||results.length>=search.max_results,returned_raw:(payload.elements||[]).length,unique_count:results.length,analyzed_count:results.length,qualified_count:0,qualification_note:'A busca encontrou registros OSM. Qualificacao comercial ainda nao executada; ausencia de site nao prova que a empresa nao tenha site.',site_filter:search.site_only?'Somente registros com tag de site no OSM':'Nenhum'};
+    onProgress('Consulta concluida: '+results.length+' registros OSM unicos recebidos');return{results,metadata};
   }
 }
+function configUserAgent(provider){return provider.userAgent||'PIXEL-AI-STUDIO/0.2 (user-initiated OSM prospecting)'}
 
 export const prospectingProviders={overpass:config=>new OverpassProvider(config)};

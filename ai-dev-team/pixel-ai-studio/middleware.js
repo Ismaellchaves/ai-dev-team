@@ -6,7 +6,12 @@ export const config = { runtime: 'nodejs' };
 export default function middleware(request) {
   const username = process.env.PIXEL_SITE_USER || 'pixel';
   const password = process.env.PIXEL_SITE_PASSWORD;
-  if (!password) return new Response('Acesso bloqueado: configure PIXEL_SITE_PASSWORD no Vercel.', { status: 503 });
+  if (!password) {
+    return new Response(
+      'PIXEL AI STUDIO: falta configurar a senha de acesso. Na Vercel, abra Settings > Environment Variables, adicione PIXEL_SITE_PASSWORD para Production (e Preview, se usar) e faça um novo Deploy. A senha não deve ser enviada ao GitHub.',
+      { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } },
+    );
+  }
 
   const authorization = request.headers.get('authorization') || '';
   const encoded = authorization.match(/^Basic\s+(.+)$/i)?.[1];
