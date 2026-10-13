@@ -49,3 +49,20 @@ test('fecha tentativas antigas duplicadas sem apagar seus logs', t => {
   assert.equal(store.getTask(old.id).error,'falha antiga');
   store.close();
 });
+
+test('migra e persiste resultados de prospecção com provedor, metadados e licença',t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pixel-osm-store-'));
+  t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  let store=openStore(dir);
+  const search=store.createProspectingSearch({id:'osm-search-1',query:'barbearias em Crateús',category:'Barbearias',region:'Crateús',radius_km:null,max_results:100,provider:'overpass'});
+  assert.equal(search.provider,'overpass');
+  store.saveProspectingResults(search.id,[{id:'osm:node:12',name:'Barbearia Central',tags:{shop:'hairdresser'}}]);
+  store.updateProspectingSearch(search.id,{status:'succeeded',source_metadata:{provider:'overpass',license:'ODbL'},stats:{unique:1,qualified:0}});
+  store.close();store=openStore(dir);
+  assert.equal(store.getProspectingSearch(search.id).status,'succeeded');
+  assert.deepEqual(store.prospectingResults(search.id),[{id:'osm:node:12',name:'Barbearia Central',tags:{shop:'hairdresser'}}]);
+  assert.equal(store.countProspectingResults(search.id),1);
+  assert.equal(JSON.parse(store.getProspectingSearch(search.id).source_metadata).license,'ODbL');
+  assert.equal(JSON.parse(store.getProspectingSearch(search.id).stats_json).qualified,0);
+  store.close();
+});

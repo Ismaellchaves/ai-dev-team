@@ -8,7 +8,13 @@
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
     "test": "node --test",
-    "check": "node --check src/server.mjs && node --check src/store.mjs && node --check src/codex.mjs && node --check public/app.js"
+    "check": "node --check src/server.mjs && node --check src/store.mjs && node --check src/prospecting.mjs && node --check src/codex.mjs && node --check public/app.js && node --check api/[...path].mjs && node --check middleware.js && node --check scripts/build-vercel.mjs",
+    "build:vercel": "node scripts/build-vercel.mjs"
   },
-  "engines": { "node": ">=22.5" }
+  "dependencies": {
+    "@vercel/functions": "^3.9.11"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
 }
