@@ -104,6 +104,13 @@ export function normalizeOsmElement(element){
   return{id:`osm:${element.type}:${element.id}`,osm_type:element.type,osm_id:String(element.id),name:cleanTag(tags.name||tags.brand||'Sem nome cadastrado no OpenStreetMap'),category:cleanTag(tags.shop||tags.amenity||tags.office||tags.craft||tags.leisure||tags.tourism||tags.healthcare||''),address,latitude:Number.isFinite(latitude)?latitude:null,longitude:Number.isFinite(longitude)?longitude:null,phone:cleanTag(tags.phone||tags['contact:phone']||''),website:cleanTag(website),opening_hours:cleanTag(tags.opening_hours||''),osm_url:`https://www.openstreetmap.org/${element.type}/${element.id}`,tags};
 }
 
+export function buildProspectingCsv(results=[],{searchedAt=''}={}){
+  const quote=value=>'"'+String(value??'').replaceAll('"','""')+'"';
+  const safe=value=>{const text=String(value??'');return quote(/^[=+@\-\t\r]/.test(text)?`'${text}`:text)};
+  const columns=['ID OSM','Tipo','Nome','Categoria','Endereço','Latitude','Longitude','Telefone','Site','Horário','URL OpenStreetMap','Data da pesquisa'];
+  return '\ufeff'+['Fonte: OpenStreetMap contributors · Licença: ODbL 1.0',columns.map(safe).join(','),...results.map(place=>[place.osm_id,place.osm_type,place.name,place.category,place.address,place.latitude,place.longitude,place.phone,place.website,place.opening_hours,place.osm_url,searchedAt].map(safe).join(','))].join('\r\n');
+}
+
 let lastGeocodeRequest=0;
 const geocodeCache=new Map();
 const osmType=value=>({r:'relation',w:'way',n:'node',relation:'relation',way:'way',node:'node'})[String(value||'').toLowerCase()]||null;

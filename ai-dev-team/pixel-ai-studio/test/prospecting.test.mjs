@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildOverpassQuery,categoryFor,deduplicateOsmElements,normalizeOsmElement,OverpassProvider,parseProspectingIntent,splitBoundingBox} from '../src/prospecting.mjs';
+import {buildOverpassQuery,buildProspectingCsv,categoryFor,deduplicateOsmElements,normalizeOsmElement,OverpassProvider,parseProspectingIntent,splitBoundingBox} from '../src/prospecting.mjs';
 
 test('interpreta nichos, regiões, raio, site e limites em linguagem natural',()=>{
   const examples=[
@@ -33,6 +33,13 @@ test('constrói consultas Overpass tipadas por área ou raio sem editar dados OS
 test('deduplica somente o mesmo tipo e ID e não preenche campos ausentes',()=>{
   const unique=deduplicateOsmElements([{type:'node',id:7},{type:'node',id:7},{type:'way',id:7}]);assert.equal(unique.length,2);
   const place=normalizeOsmElement({type:'node',id:8,lat:1,lon:2,tags:{shop:'books',name:'Livraria'}});assert.equal(place.id,'osm:node:8');assert.equal(place.name,'Livraria');assert.equal(place.phone,'');assert.equal(place.website,'');assert.equal(place.address,'');
+});
+
+test('exporta CSV com atribuição, data e proteção contra fórmulas de planilha',()=>{
+  const csv=buildProspectingCsv([{osm_id:'7',osm_type:'node',name:'=HYPERLINK("x")',category:'books',address:'Rua A',latitude:1,longitude:2,phone:'',website:'',opening_hours:'',osm_url:'https://www.openstreetmap.org/node/7'}],{searchedAt:'2026-01-02T03:04:05.000Z'});
+  assert.ok(csv.startsWith('\ufeffFonte: OpenStreetMap contributors · Licença: ODbL 1.0'));
+  assert.match(csv,/'=HYPERLINK\(""x""\)'/);
+  assert.match(csv,/2026-01-02T03:04:05\.000Z/);
 });
 
 const geocode=[{lat:'-5.18',lon:'-40.67',boundingbox:['-5.19','-5.17','-40.68','-40.66'],osm_type:'relation',osm_id:9201,display_name:'Crateús, Brasil',name:'Crateús',type:'administrative'}];

@@ -59,6 +59,10 @@ export function openStore(dataDir) {
       source_id TEXT NOT NULL, position INTEGER NOT NULL, result_json TEXT NOT NULL,
       PRIMARY KEY(search_id,source_id)
     );
+    CREATE TABLE IF NOT EXISTS prospecting_leads (
+      source_id TEXT PRIMARY KEY, result_json TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'novo',
+      notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS tasks_project_idx ON tasks(project_id, created_at);
     CREATE INDEX IF NOT EXISTS prospecting_searches_created_idx ON prospecting_searches(created_at DESC);`);
   const officeColumns = new Set(db.prepare('PRAGMA table_info(offices)').all().map(c => c.name));
@@ -101,6 +105,9 @@ export function openStore(dataDir) {
     saveProspectingResults: (id,results) => {const add=db.prepare('INSERT OR IGNORE INTO prospecting_results(search_id,source_id,position,result_json) VALUES(?,?,?,?)');db.exec('BEGIN IMMEDIATE');try{results.forEach((item,index)=>add.run(id,item.id,index,JSON.stringify(item)));db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}},
     prospectingResults: id => db.prepare('SELECT result_json FROM prospecting_results WHERE search_id=? ORDER BY position').all(id).map(row=>JSON.parse(row.result_json)),
     countProspectingResults: id => db.prepare('SELECT count(*) n FROM prospecting_results WHERE search_id=?').get(id).n,
+    saveProspectingLead: result => {const timestamp=now();db.prepare(`INSERT INTO prospecting_leads(source_id,result_json,created_at,updated_at) VALUES(?,?,?,?)
+      ON CONFLICT(source_id) DO UPDATE SET result_json=excluded.result_json,updated_at=excluded.updated_at`).run(result.id,JSON.stringify(result),timestamp,timestamp);return db.prepare('SELECT * FROM prospecting_leads WHERE source_id=?').get(result.id)},
+    listProspectingLeads: () => db.prepare('SELECT * FROM prospecting_leads ORDER BY updated_at DESC LIMIT 1000').all().map(row=>({...JSON.parse(row.result_json),status:row.status,notes:row.notes,created_at:row.created_at,updated_at:row.updated_at})),
     assignProjectOffice: (projectId,officeId) => db.prepare('INSERT INTO project_offices(project_id,office_id) VALUES(?,?) ON CONFLICT(project_id) DO UPDATE SET office_id=excluded.office_id').run(projectId,officeId),
     resources: () => listResources.all(), addResource: r => {db.prepare('INSERT INTO resources VALUES(?,?,?,?,?)').run(r.id,r.title,r.kind,r.content,now());}, deleteResource: id => db.prepare('DELETE FROM resources WHERE id=?').run(id),
     prompts: () => listPrompts.all(), addPrompt: p => {db.prepare('INSERT INTO prompts VALUES(?,?,?,?,?)').run(p.id,p.title,p.kind,p.content,now());}, deletePrompt: id => db.prepare('DELETE FROM prompts WHERE id=?').run(id),

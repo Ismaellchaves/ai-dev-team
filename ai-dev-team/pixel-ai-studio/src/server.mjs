@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import { openStore } from './store.mjs';
 import { providerConfig, checkCodex, runCodex } from './codex.mjs';
-import { parseProspectingIntent, prospectingProviders } from './prospecting.mjs';
+import { buildProspectingCsv, parseProspectingIntent, prospectingProviders } from './prospecting.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -236,6 +236,24 @@ async function api(req,res,url){
   if(req.method==='GET'&&url.pathname==='/api/offices')return send(res,200,{offices:store.offices(),agents:allAgents()});
   if(req.method==='GET'&&url.pathname==='/api/prospecting/config')return send(res,200,mapsIntegrationStatus());
   if(req.method==='GET'&&url.pathname==='/api/prospecting/searches')return send(res,200,{searches:store.listProspectingSearches().map(s=>({...s,source_metadata:parseJson(s.source_metadata),stats:parseJson(s.stats_json),results_count:store.countProspectingResults(s.id),place_ids:store.prospectingPlaceIds(s.id)}))});
+  if(req.method==='GET'&&url.pathname==='/api/prospecting/leads')return send(res,200,{leads:store.listProspectingLeads()});
+  if(req.method==='POST'&&url.pathname==='/api/prospecting/leads'){
+    const b=await body(req),searchId=text(b.search_id,80),sourceId=text(b.source_id,100),search=store.getProspectingSearch(searchId);
+    if(!search)return send(res,404,{error:'Pesquisa de origem não encontrada.'});
+    const result=store.prospectingResults(searchId).find(item=>item.id===sourceId);
+    if(!result||!/^osm:(node|way|relation):\d+$/.test(result.id))return send(res,404,{error:'Estabelecimento não encontrado nessa pesquisa.'});
+    store.saveProspectingLead(result);store.event('prospecting',`Lead salvo no CRM: ${result.name} (${result.id})`);
+    return send(res,201,{lead:store.listProspectingLeads().find(item=>item.id===sourceId)});
+  }
+  const prospectingCsvMatch=url.pathname.match(/^\/api\/prospecting\/searches\/([\w-]+)\/export\.csv$/);
+  if(req.method==='GET'&&prospectingCsvMatch){
+    const id=prospectingCsvMatch[1],search=store.getProspectingSearch(id);if(!search)return send(res,404,{error:'Pesquisa não encontrada.'});
+    const params=url.searchParams,category=params.get('category')||'',region=params.get('region')||'',site=params.get('site')||'all',metadata=parseJson(search.source_metadata);
+    const includes=(value,needle)=>!needle||String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(needle.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase());
+    const results=store.prospectingResults(id).filter(place=>includes(`${place.category} ${place.name}`,category)&&includes(`${place.address} ${metadata.location_name||''}`,region)&&(site==='all'||(site==='yes'?Boolean(place.website):!place.website)));
+    const csv=buildProspectingCsv(results,{searchedAt:search.created_at});
+    return res.writeHead(200,{'content-type':'text/csv; charset=utf-8','content-disposition':`attachment; filename="pixel-prospeccao-${id}.csv"`,'cache-control':'no-store','content-length':Buffer.byteLength(csv)}).end(csv);
+  }
   if(req.method==='POST'&&url.pathname==='/api/prospecting/searches'){
     const b=await body(req),intent=parseProspectingIntent(b);if(intent.missing.length)return send(res,422,{needs:intent.missing,message:intent.missing.includes('category')?'Informe o nicho que deseja pesquisar.':'Informe cidade, estado, país ou região.'});if(intent.unsupported_category)return send(res,422,{needs:['category'],message:'Não encontrei uma categoria OSM segura para esse nicho. Informe uma categoria conhecida ou um filtro explícito, como shop=florist.'});
     const requester=req.socket.remoteAddress||'unknown',now=Date.now(),recent=(prospectingRateLimits.get(requester)||[]).filter(time=>now-time<60_000);if(recent.length>=3)return send(res,429,{error:'Limite local de três pesquisas por minuto atingido. Aguarde um pouco antes de tentar novamente.'});recent.push(now);prospectingRateLimits.set(requester,recent);
