@@ -1,0 +1,14 @@
+{
+  "name": "pixel-ai-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Escritório local de desenvolvimento assistido por agentes Codex",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs",
+    "test": "node --test",
+    "check": "node --check src/server.mjs && node --check src/store.mjs && node --check src/codex.mjs && node --check public/app.js"
+  },
+  "engines": { "node": ">=22.5" }
+}

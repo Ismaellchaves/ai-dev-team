@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0b10"><title>PIXEL AI STUDIO · Escritório</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/office.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="#overview"><span class="brand-mark">P<span>✳</span></span><span>PIXEL<span class="brand-light">STUDIO</span><small>ESCRITÓRIO DE IA</small></span></a>
+    <div class="workspace-label">ESPAÇO DE TRABALHO <span class="live-dot"></span> LOCAL</div>
+    <nav aria-label="Navegação principal">
+      <button class="nav-item active" data-view="overview"><span>◫</span> Visão geral</button>
+      <button class="nav-item" data-view="office"><span>▦</span> Escritório <b id="navRunning">0</b></button>
+      <button class="nav-item" data-view="projects"><span>▧</span> Projetos <b id="navProjects">0</b></button>
+      <button class="nav-item" data-view="tasks"><span>☷</span> Quadro de tarefas <b id="navTasks">0</b></button>
+      <button class="nav-item" data-view="agents"><span>✣</span> Escritório de agentes</button>
+      <button class="nav-item" data-view="activity"><span>⌁</span> Atividade e logs</button>
+    </nav>
+    <div class="sidebar-bottom"><div class="sidebar-note"><span class="shield">⬡</span><div><strong>Ambiente local</strong><small>Projetos isolados neste espaço</small></div></div><div class="user"><div class="avatar">P</div><div><strong>Operador Pixel</strong><small>ADMINISTRADOR LOCAL</small></div><span class="dots">•••</span></div></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div class="crumb">PIXEL AI STUDIO <span>/</span> <b id="crumbPage">VISÃO GERAL</b></div><div class="top-actions"><div class="service-pill"><i id="serviceDot"></i><span id="serviceText">Verificando serviços</span></div><button class="icon-button" id="refreshBtn" aria-label="Atualizar dados">↻</button><div class="avatar small-avatar">P</div></div></header>
+    <div class="content">
+      <section class="view" id="view-overview">
+        <div class="hero"><div><div class="eyebrow"><span class="spark">✳</span> SEU ESCRITÓRIO DE ENGENHARIA IA</div><h1>Construa algo <span>extraordinário.</span></h1><p>Coordene projetos, agentes e entregas em um único espaço de trabalho.</p></div><button class="button primary" data-new-project><span>＋</span> Novo projeto</button><div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div></div>
+        <a class="button secondary" href="#office">▦ Acompanhar o escritório ao vivo →</a>
+        <div class="metrics">
+          <article class="metric"><div class="metric-head">PROJETOS <span class="metric-icon purple">▧</span></div><strong id="metricProjects">0</strong><small>Projetos neste computador</small><div class="metric-line purple-line"></div></article>
+          <article class="metric"><div class="metric-head">TAREFAS PENDENTES <span class="metric-icon blue">☷</span></div><strong id="metricPending">0</strong><small>Aguardando execução</small><div class="metric-line blue-line"></div></article>
+          <article class="metric"><div class="metric-head">AGENTES DISPONÍVEIS <span class="metric-icon green">✣</span></div><strong id="metricAgents">12<span class="small-total"> / 12</span></strong><small>Especialistas prontos para trabalhar</small><div class="metric-line green-line"></div></article>
+          <article class="metric"><div class="metric-head">EM EXECUÇÃO <span class="metric-icon amber">◷</span></div><strong id="metricRunning">0</strong><small>Tarefas sendo realizadas agora</small><div class="metric-line amber-line"></div></article>
+        </div>
+        <div class="section-grid"><section class="panel project-panel"><div class="panel-heading"><div><div class="eyebrow">SEU TRABALHO</div><h2>Projetos recentes</h2></div><button class="text-button" data-view="projects">Ver todos <span>→</span></button></div><div id="recentProjects" class="project-list"></div></section>
+          <section class="panel activity-panel"><div class="panel-heading"><div><div class="eyebrow">AO VIVO</div><h2>Atividade recente</h2></div><span class="live-label"><i></i> ATUALIZADO</span></div><div id="recentActivity" class="activity-list"></div></section></div>
+        <section class="provider-banner"><div class="provider-icon">⌘</div><div class="provider-copy"><strong>Serviço de inteligência</strong><span id="providerMessage">Verificando a disponibilidade do Codex CLI...</span></div><span id="providerBadge" class="badge muted">VERIFICANDO</span><button class="text-button" data-view="agents">Ver conexão →</button></section>
+      </section>
+      <section class="view hidden" id="view-office">
+        <div class="page-heading"><div><div class="eyebrow">ACOMPANHAMENTO AO VIVO</div><h1>Escritório</h1><p>Acompanhe o trabalho, as mensagens e as atividades dos agentes.</p></div><div class="office-controls"><button class="button secondary" id="addRoom">＋ Criar cômodo</button><button class="button secondary" id="toggleFullscreen">⛶ Tela cheia</button><button class="button primary" data-new-project>＋ Fazer um pedido</button></div></div>
+        <div class="office-hint">Os passeios, pausas e deslocamentos são animações do escritório; tarefas e mensagens de trabalho vêm das execuções reais do Codex.</div>
+        <section class="office-panel" id="officePanel"><div class="office-top"><div><div class="eyebrow">SEDE PIXEL · AO VIVO</div><h2>O time está trabalhando.</h2><p>Os estados e as mensagens são atualizados conforme a execução real avança.</p></div><div class="office-legend"><span><i class="legend-work"></i> Trabalhando</span><span><i class="legend-wait"></i> Na fila</span><span><i class="legend-error"></i> Precisa de atenção</span></div></div><div class="office-room office-room-large"><div class="room-sign"><span>PIXEL</span><small>ESCRITÓRIO DE IA</small></div><div class="room-windows"><i></i><i></i><i></i></div><div class="office-floor" id="officeFloor"></div><div class="room-footer"><span>⌂ ESPAÇO LOCAL</span><span id="officeSummary">12 especialistas · aguardando pedidos</span><span id="officeClock">PRONTO PARA TRABALHAR</span></div></div><div id="extraRooms" class="extra-rooms"></div><div class="office-conversation" id="officeConversation"></div><section class="meeting-log"><div class="meeting-log-head"><div><div class="eyebrow">SALA DE REUNIÃO · REGISTROS REAIS</div><h3>O que os agentes disseram</h3></div><span>Mensagens emitidas pelo Codex durante cada tarefa</span></div><div id="meetingMessages" class="meeting-messages"></div></section></section>
+        <section class="office-follow panel"><div class="panel-heading"><div><div class="eyebrow">LINHA DO TEMPO</div><h2>O que está acontecendo</h2></div><span class="live-label"><i></i> ATUALIZAÇÃO AUTOMÁTICA</span></div><div id="officeTimeline" class="activity-list"></div></section>
+        <div id="officeDeliveries" class="office-deliveries"></div>
+      </section>
+      <section class="view hidden" id="view-projects"><div class="page-heading"><div><div class="eyebrow">SEUS ARQUIVOS</div><h1>Projetos</h1><p>Abra a prévia do site, acompanhe o andamento e baixe os arquivos.</p></div><button class="button primary" data-new-project>＋ Novo projeto</button></div><div id="selectedProjectPreview"></div><div id="allProjects" class="cards-grid"></div></section>
+      <section class="view hidden" id="view-tasks"><div class="page-heading"><div><div class="eyebrow">TRABALHO EM ANDAMENTO</div><h1>Tarefas</h1><p>Acompanhe o que está na fila, em execução, concluído ou precisa de atenção.</p></div></div><div id="taskBoard" class="task-board"></div></section>
+      <section class="view hidden" id="view-agents"><div class="page-heading"><div><div class="eyebrow">EQUIPE PIXEL</div><h1>Agentes</h1><p>Especialistas disponíveis para executar as tarefas do projeto.</p></div></div><div class="provider-card"><div class="provider-icon">⌘</div><div><div class="eyebrow">CONEXÃO COM O CODEX</div><h3 id="agentProvider">Codex CLI</h3><p id="agentProviderDetail">A conexão será verificada pelo comando local de autenticação do Codex.</p></div><span id="agentProviderBadge" class="badge muted">VERIFICANDO</span><button id="checkProvider" class="button secondary">Verificar conexão</button></div><div id="agentGrid" class="agent-grid"></div></section>
+      <section class="view hidden" id="view-activity"><div class="page-heading"><div><div class="eyebrow">HISTÓRICO</div><h1>Atividade e registros</h1><p>Eventos e resultados das execuções recentes.</p></div><a class="button secondary" href="/api/export" download="pixel-ai-studio-dados.json">Baixar dados ↗</a></div><div id="allActivity" class="panel full-activity"></div></section>
+    </div>
+    <footer><span>PIXEL AI STUDIO <b>v0.1.0</b></span><span><i class="live-dot"></i> APLICATIVO LOCAL <span class="footer-sep">·</span> DADOS SALVOS NO COMPUTADOR</span></footer>
+  </main>
+</div>
+<dialog id="projectDialog"><form id="projectForm"><div class="modal-head"><div><div class="eyebrow">COMECE UM NOVO PROJETO</div><h2>Novo projeto</h2></div><button type="button" class="close" data-close>×</button></div><label>Nome do projeto<input name="name" maxlength="100" placeholder="Ex.: Portal da Aurora" required></label><label>O que vamos construir?<textarea name="brief" rows="5" minlength="8" placeholder="Descreva o objetivo e as funcionalidades necessárias..." required></textarea></label><label>Imagens de referência<input name="references" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple><small>Até 5 imagens · PNG, JPEG, WebP ou GIF · máximo de 8 MB cada.</small></label><div id="projectError" class="error-message"></div><div class="modal-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary">Criar e planejar <span>→</span></button></div></form></dialog>
+<dialog id="planDialog"><div class="modal-head"><div><div class="eyebrow">REVISE ANTES DE EXECUTAR</div><h2>Plano do projeto</h2></div><button class="close" data-close>×</button></div><p id="planSummary" class="plan-summary"></p><div id="planTasks" class="plan-tasks"></div><div class="modal-actions"><button class="button secondary" data-close>Fechar</button><button id="approvePlan" class="button primary">Aprovar e iniciar equipe <span>✓</span></button></div></dialog>
+<dialog id="taskDialog"><div class="modal-head"><div><div class="eyebrow">DETALHE DA TAREFA</div><h2 id="taskTitle"></h2></div><button class="close" data-close>×</button></div><div id="taskDetail" class="task-detail"></div><div class="modal-actions"><button class="button secondary" data-close>Fechar</button><button id="runTask" class="button primary">Executar agente <span>→</span></button><button id="cancelTask" class="button danger hidden">Cancelar execução</button></div></dialog>
+<dialog id="roomDialog"><form id="roomForm"><div class="modal-head"><div><div class="eyebrow">PERSONALIZAR O ESCRITÓRIO</div><h2>Criar cômodo</h2></div><button type="button" class="close" data-close>×</button></div><label>Tipo de cômodo<select name="type"><option value="meeting">Sala de reunião</option><option value="cafe">Cafeteria</option><option value="rest">Sala de descanso</option><option value="library">Biblioteca</option><option value="custom">Outro cômodo</option></select></label><label>Nome<input name="name" maxlength="40" placeholder="Ex.: Sala de planejamento" required></label><div class="modal-actions"><button type="button" class="button secondary" data-close>Cancelar</button><button class="button primary">Adicionar cômodo</button></div></form></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/app.js" defer></script>
+</body></html>
