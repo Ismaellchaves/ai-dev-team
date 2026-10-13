@@ -6,13 +6,14 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/office.css">
+  <link rel="stylesheet" href="/mobile.css">
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar">
     <a class="brand" href="#overview"><span class="brand-mark">P<span>✳</span></span><span>PIXEL<span class="brand-light">STUDIO</span><small>ESCRITÓRIO DE IA</small></span></a>
     <div class="workspace-label">ESPAÇO DE TRABALHO <span class="live-dot"></span> LOCAL</div>
-    <nav aria-label="Navegação principal">
+    <nav id="primaryNavigation" aria-label="Navegação principal">
       <div class="nav-group-label">EMPRESA</div>
       <button class="nav-item active" data-view="overview"><span>◫</span> Visão geral</button>
       <button class="nav-item" data-view="office"><span>▦</span> Escritório <b id="navRunning">0</b></button>
@@ -28,8 +29,9 @@
     </nav>
     <div class="sidebar-bottom"><div class="sidebar-note"><span class="shield">⬡</span><div><strong>Ambiente local</strong><small>Projetos isolados neste espaço</small></div></div><div class="user"><div class="avatar">P</div><div><strong>Operador Pixel</strong><small>ADMINISTRADOR LOCAL</small></div><span class="dots">•••</span></div></div>
   </aside>
+  <button class="mobile-nav-backdrop" type="button" aria-label="Fechar navegação" hidden></button>
   <main class="main">
-    <header class="topbar"><div class="crumb">PIXEL AI STUDIO <span>/</span> <b id="crumbPage">VISÃO GERAL</b></div><div class="top-actions"><div class="service-pill"><i id="serviceDot"></i><span id="serviceText">Verificando serviços</span></div><button class="icon-button" id="refreshBtn" aria-label="Atualizar dados">↻</button><div class="avatar small-avatar">P</div></div></header>
+    <header class="topbar"><button class="icon-button mobile-nav-toggle" type="button" aria-label="Abrir menu de navegação" aria-controls="primaryNavigation" aria-expanded="false"><span></span><span></span><span></span></button><div class="crumb">PIXEL AI STUDIO <span>/</span> <b id="crumbPage">VISÃO GERAL</b></div><div class="top-actions"><div class="service-pill"><i id="serviceDot"></i><span id="serviceText">Verificando serviços</span></div><button class="icon-button" id="refreshBtn" aria-label="Atualizar dados">↻</button><div class="avatar small-avatar">P</div></div></header>
     <div class="content">
       <section class="view" id="view-overview">
 
@@ -97,4 +99,5 @@
 <div id="toast" role="status" aria-live="polite"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
   <script src="/app.js" defer></script>
+  <script src="/mobile.js" defer></script>
 </body></html>

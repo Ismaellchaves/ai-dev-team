@@ -18,6 +18,8 @@ test('build Vercel copia a interface para a pasta estática',async()=>{
   assert.equal(result.status,0,result.stderr);
   assert.ok(fs.existsSync(path.join(root,'dist','index.html')));
   assert.ok(fs.existsSync(path.join(root,'dist','app.js')));
+  assert.ok(fs.existsSync(path.join(root,'dist','mobile.css')));
+  assert.ok(fs.existsSync(path.join(root,'dist','mobile.js')));
 });
 
 test('proxy Vercel encaminha API com token privado e sem expô-lo ao navegador',async t=>{
